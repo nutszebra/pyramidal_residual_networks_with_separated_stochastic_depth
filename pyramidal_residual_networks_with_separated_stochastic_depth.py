@@ -8,6 +8,25 @@ import functools
 from collections import defaultdict
 
 
+class BN_ReLU_Conv(nutszebra_chainer.Model):
+
+    def __init__(self, in_channel, out_channel, filter_size=(3, 3), stride=(1, 1), pad=(1, 1)):
+        super(BN_ReLU_Conv, self).__init__(
+            conv=L.Convolution2D(in_channel, out_channel, filter_size, stride, pad),
+            bn=L.BatchNormalization(in_channel),
+        )
+
+    def weight_initialization(self):
+        self.conv.W.data = self.weight_relu_initialization(self.conv)
+        self.conv.b.data = self.bias_initialization(self.conv, constant=0)
+
+    def __call__(self, x, train=False):
+        return self.conv(F.relu(self.bn(x, test=not train)))
+
+    def count_parameters(self):
+        return functools.reduce(lambda a, b: a * b, self.conv.W.data.shape)
+
+
 class Conv_BN_ReLU(nutszebra_chainer.Model):
 
     def __init__(self, in_channel, out_channel, filter_size=(3, 3), stride=(1, 1), pad=(1, 1)):
@@ -177,7 +196,7 @@ class PyramidalResNet(nutszebra_chainer.Model):
                 modules.append((name, BN_Conv_BN_ReLU_Conv_BN(in_channel, out_channel, (3, 3), stride, (1, 1), probability=probability)))
                 # in_channel is changed
                 in_channel = out_channel
-        modules += [('linear', Conv_BN_ReLU(out_channel, category_num, 1, 1, 0))]
+        modules += [('linear', BN_ReLU_Conv(out_channel, category_num, 1, 1, 0))]
         # register layers
         [self.add_link(*link) for link in modules]
         self.modules = modules
