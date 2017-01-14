@@ -8,10 +8,10 @@ import functools
 from collections import defaultdict
 
 
-class BN_Conv(nutszebra_chainer.Model):
+class Conv(nutszebra_chainer.Model):
 
     def __init__(self, in_channel, out_channel, filter_size=(3, 3), stride=(1, 1), pad=(1, 1)):
-        super(BN_Conv, self).__init__(
+        super(Conv, self).__init__(
             conv=L.Convolution2D(in_channel, out_channel, filter_size, stride, pad),
             bn=L.BatchNormalization(in_channel),
         )
@@ -20,8 +20,8 @@ class BN_Conv(nutszebra_chainer.Model):
         self.conv.W.data = self.weight_relu_initialization(self.conv)
         self.conv.b.data = self.bias_initialization(self.conv, constant=0)
 
-    def __call__(self, x, train=False):
-        return self.conv(self.bn(x, test=not train))
+    def __call__(self, x):
+        return self.conv(x)
 
     def count_parameters(self):
         return functools.reduce(lambda a, b: a * b, self.conv.W.data.shape)
@@ -110,7 +110,7 @@ class BN_Conv_BN_ReLU_Conv_BN(nutszebra_chainer.Model):
         diff_channel = int(in_channel - channel)
         if diff_channel >= 1:
             x = self.concatenate_zero_pad(x, (batch, in_channel, height, width), x.volatile, type(x.data))
-        original_x = x
+        _x = x
         p = (self.probability[0] >= np.random.rand(), self.probability[1] >= np.random.rand())
         # TODO: sphagettis code here, refractoring is necessary
         if train is False or p == (True, True):
@@ -158,9 +158,9 @@ class BN_Conv_BN_ReLU_Conv_BN(nutszebra_chainer.Model):
             h = F.concat((self.create_zero_pad((batch, ch, height, width), h_exp.volatile, h_exp.dtype, type(h_exp.data)), h_exp), axis=1)
 
         elif p == (False, False):
-            return original_x
+            return _x
 
-        h = h + self.concatenate_zero_pad(self.maybe_pooling(original_x), h.data.shape, h.volatile, type(h.data))
+        h = h + self.concatenate_zero_pad(self.maybe_pooling(_x), h.data.shape, h.volatile, type(h.data))
         return h
 
     @staticmethod
@@ -196,7 +196,7 @@ class PyramidalResNet(nutszebra_chainer.Model):
                 modules.append((name, BN_Conv_BN_ReLU_Conv_BN(in_channel, out_channel, (3, 3), stride, (1, 1), probability=probability)))
                 # in_channel is changed
                 in_channel = out_channel
-        modules += [('linear', BN_Conv(out_channel, category_num, 1, 1, 0))]
+        modules += [('linear', Conv(out_channel, category_num, 1, 1, 0))]
         # register layers
         [self.add_link(*link) for link in modules]
         self.modules = modules
@@ -245,11 +245,11 @@ class PyramidalResNet(nutszebra_chainer.Model):
         h = F.reshape(F.average_pooling_2d(h, (height, width)), (batch, channels, 1, 1))
         _, in_channel, _, _ = self.linear.conv.W.data.shape
         h = BN_Conv_BN_ReLU_Conv_BN.concatenate_zero_pad(h, (batch, in_channel, 1, 1), h.volatile, type(h.data))
-        return F.reshape(self.linear(h, train), (batch, self.category_num))
+        self.h = h
+        return F.reshape(self.linear(h), (batch, self.category_num))
 
     def calc_loss(self, y, t):
         loss = F.softmax_cross_entropy(y, t)
-        print(loss.data)
         return loss
 
     def accuracy(self, y, t, xp=np):
