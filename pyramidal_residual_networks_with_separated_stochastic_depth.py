@@ -110,7 +110,7 @@ class BN_Conv_BN_ReLU_Conv_BN(nutszebra_chainer.Model):
         diff_channel = int(in_channel - channel)
         if diff_channel >= 1:
             x = self.concatenate_zero_pad(x, (batch, in_channel, height, width), x.volatile, type(x.data))
-        _x = x
+        original_x = x
         p = (self.probability[0] >= np.random.rand(), self.probability[1] >= np.random.rand())
         # TODO: sphagettis code here, refractoring is necessary
         if train is False or p == (True, True):
@@ -158,9 +158,9 @@ class BN_Conv_BN_ReLU_Conv_BN(nutszebra_chainer.Model):
             h = F.concat((self.create_zero_pad((batch, ch, height, width), h_exp.volatile, h_exp.dtype, type(h_exp.data)), h_exp), axis=1)
 
         elif p == (False, False):
-            return _x
+            return original_x
 
-        h = h + self.concatenate_zero_pad(self.maybe_pooling(_x), h.data.shape, h.volatile, type(h.data))
+        h = h + self.concatenate_zero_pad(self.maybe_pooling(original_x), h.data.shape, h.volatile, type(h.data))
         return h
 
     @staticmethod
