@@ -601,12 +601,11 @@ class OptimizerPyramidalResNetWithSSD(Optimizer):
         all_links = OptimizerPyramidalResNetWithSSD._find(model)
         optimizer_set = []
         for link in all_links:
-            optimizer = optimizers.MomentumSGD(lr, momentum)
+            # optimizer = optimizers.MomentumSGD(lr, momentum)
+            optimizer = optimizers.Adam(alpha=lr)
             weight_decay = chainer.optimizer.WeightDecay(self.weight_decay)
-            gradinet_clipping = chainer.optimizer.GradientClipping(2.0)
             optimizer.setup(link[0])
             optimizer.add_hook(weight_decay)
-            optimizer.add_hook(gradinet_clipping)
             optimizer_set.append(optimizer)
         self.optimizer_set = optimizer_set
         self.all_links = all_links
