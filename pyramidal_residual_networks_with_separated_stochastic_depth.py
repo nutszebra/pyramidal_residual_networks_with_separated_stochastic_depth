@@ -245,7 +245,6 @@ class PyramidalResNet(nutszebra_chainer.Model):
         h = F.reshape(F.average_pooling_2d(h, (height, width)), (batch, channels, 1, 1))
         _, in_channel, _, _ = self.linear.conv.W.data.shape
         h = BN_Conv_BN_ReLU_Conv_BN.concatenate_zero_pad(h, (batch, in_channel, 1, 1), h.volatile, type(h.data))
-        self.h = h
         return F.reshape(self.linear(h), (batch, self.category_num))
 
     def calc_loss(self, y, t):
