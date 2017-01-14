@@ -248,8 +248,8 @@ class PyramidalResNet(nutszebra_chainer.Model):
         return F.reshape(self.linear(h, train), (batch, self.category_num))
 
     def calc_loss(self, y, t):
-        print(loss)
         loss = F.softmax_cross_entropy(y, t)
+        print(loss.data)
         return loss
 
     def accuracy(self, y, t, xp=np):
